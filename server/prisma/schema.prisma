@@ -1,0 +1,335 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TaskStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  SKIPPED
+  CANCELLED
+  EXPIRED
+}
+
+enum EnergyLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum FocusLevel {
+  LIGHT
+  MEDIUM
+  DEEP
+}
+
+// ─── Models ────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String   // bcrypt hash — NEVER plain text
+  role      Role     @default(USER)
+
+  // Email verification
+  isVerified        Boolean   @default(false)
+  emailVerifiedAt   DateTime?
+
+  // Password reset
+  resetToken        String?   @unique
+  resetTokenExpiry  DateTime?
+
+  // Login tracking
+  lastLoginAt DateTime?
+  loginCount  Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sessions         Session[]
+  schedules        Schedule[]
+  userModules      UserModule[]
+  tasks            Task[]
+  focusSessions    FocusSession[]
+  dailyReflections DailyReflection[]
+  moduleData       ModuleData[]
+  profile          Profile?
+  integrations     Integration[]
+  goals            Goal[]
+  verificationTokens VerificationToken[]
+  historyLogs      HistoryLog[]
+
+  @@map("users")
+}
+
+model UserModule {
+  id       String @id @default(cuid())
+  userId   String
+  moduleId String // 'personal' | 'student' | 'health' | 'professional' | 'creator'
+
+  enabled  Boolean @default(true)
+  priority Int     @default(0) // Lower = higher priority; 0 = highest
+
+  // Per-module settings JSON (integration tokens, preferences, etc.)
+  settings Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+  @@map("user_modules")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  userAgent    String?  // Browser / device info
+  ipAddress    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  lastUsedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Schedule {
+  id     String @id @default(cuid())
+  userId String
+  date   String // ISO date string "2026-07-17"
+
+  // Adaptive learning context stored per day
+  promptUsed String? // The original user prompt that generated this
+  aiContext  String? // Summary of failures/notes for next day's AI
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks Task[]
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@map("schedules")
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("verification_tokens")
+}
+
+// ─── Phase 2 Models ────────────────────────────────────────────────────────
+
+model Task {
+  id               String   @id @default(cuid())
+  userId           String
+  scheduleId       String?  // Linked to a specific day schedule
+  title            String
+  description      String?
+  type             String   @default("fixed") // fixed, flexible, optional
+  priority         String   @default("medium") // critical, high, medium, low
+  category         String?
+  moduleId         String   @default("personal")
+  
+  // Timing
+  date              String?  // ISO date string if tied to a day
+  startTime         String?  // HH:MM AM/PM format or 24h
+  orderIndex        Int      @default(0)
+  estimatedDuration Int      @default(60) // minutes
+  actualDuration    Int      @default(0)  // minutes
+  deadline          DateTime?
+  
+  // State
+  status            TaskStatus @default(DRAFT)
+  incompleteReason  String?
+  notes             String?
+  
+  // Intelligence Metrics
+  energyLevel       EnergyLevel @default(MEDIUM)
+  focusLevel        FocusLevel  @default(MEDIUM)
+  difficulty        Int         @default(1)
+  
+  // Recurrence & Metadata
+  isRecurring       Boolean  @default(false)
+  recurrenceRule    String?  // e.g. "FREQ=WEEKLY;BYDAY=MO,WE,FR"
+  metadata          Json?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedule Schedule?      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  sessions FocusSession[]
+
+  @@index([userId])
+  @@index([date])
+  @@map("tasks")
+}
+
+model FocusSession {
+  id        String   @id @default(cuid())
+  userId    String
+  taskId    String?
+  duration  Int      // Minutes focused
+  type      String   @default("pomodoro") // pomodoro, short_break, long_break, custom
+  startedAt DateTime @default(now())
+  endedAt   DateTime?
+  notes     String?
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("focus_sessions")
+}
+
+model DailyReflection {
+  id         String   @id @default(cuid())
+  userId     String
+  date       String   // ISO date string
+  mood       Int?     // 1-5 scale
+  reflection String?
+  aiSummary  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_reflections")
+}
+
+model ModuleData {
+  id        String   @id @default(cuid())
+  userId    String
+  moduleId  String   // e.g., 'student', 'health'
+  type      String   // e.g., 'subject', 'workout'
+  data      Json     // Flexible payload for the specific type
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, moduleId])
+  @@map("module_data")
+}
+
+model Profile {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  timezone         String   @default("UTC")
+  country          String?
+  language         String   @default("en")
+  themePreference  String   @default("system")
+  
+  // Availability & Productivity
+  wakeTime         String?  // HH:MM
+  sleepTime        String?  // HH:MM
+  workingHours     Json?    // Array of objects e.g. [{day: "Monday", start: "09:00", end: "17:00"}]
+  studyHours       Json?
+  workoutTime      String?
+  
+  // AI Context
+  weekContext      String?  // Free-form "my week" text attached to every AI plan generation (no word limit)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Integration {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String   // e.g. 'srixam', 'google_calendar'
+  accessToken    String
+  refreshToken   String?
+  expiresAt      DateTime?
+  status         String   @default("connected") // connected, disconnected, error
+  lastSyncAt     DateTime?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
+
+model Goal {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  category    String?
+  moduleId    String?  // The module this goal belongs to (e.g. 'student', 'health')
+  priority    String   @default("medium")
+  targetDate  DateTime?
+  progress    Int      @default(0) // 0-100%
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("goals")
+}
+
+model HistoryLog {
+  id        String   @id @default(cuid())
+  userId    String
+  action    String   // e.g. 'TASK_COMPLETED', 'PLANNER_GENERATED'
+  entityId  String?  // ID of the related task, schedule, etc.
+  entityType String? // 'Task', 'Schedule', 'Goal'
+  details   Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@map("history_logs")
+}
+
