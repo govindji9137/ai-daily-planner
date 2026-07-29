@@ -4,8 +4,8 @@ const authService = require('../services/auth.service');
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  secure: true, // Required for sameSite: 'none'
+  sameSite: 'none', // Allows cross-origin cookies (Capacitor -> Render)
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
@@ -13,7 +13,7 @@ const setRefreshCookie = (res, token) =>
   res.cookie('refreshToken', token, COOKIE_OPTS);
 
 const clearRefreshCookie = (res) =>
-  res.clearCookie('refreshToken', { httpOnly: true, sameSite: 'strict' });
+  res.clearCookie('refreshToken', { httpOnly: true, secure: true, sameSite: 'none' });
 
 // POST /api/auth/signup
 const signup = async (req, res, next) => {
