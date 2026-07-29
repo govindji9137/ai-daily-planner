@@ -1,0 +1,34 @@
+# ─── Dependencies ──────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Environment / Secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+server/.env
+server/.env.local
+
+# ─── Build Output ───────────────────────────────────────────────────────────
+dist/
+build/
+
+# ─── Android Build Artifacts ────────────────────────────────────────────────
+android/.idea/
+android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
+
+# ─── Logs ───────────────────────────────────────────────────────────────────
+*.log
+server/logs/
+server/groq-error.log
+server/groq-request.json
+
+# ─── OS / Editor ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+
+# ─── Misc ───────────────────────────────────────────────────────────────────
+server/test-gemini.js

@@ -9,7 +9,7 @@ let accessToken = null;
 export const setAccessToken = (token) => { accessToken = token; };
 export const getAccessToken = () => accessToken;
 
-const BASE = '/api';
+const BASE = 'https://ai-daily-planner-0r5a.onrender.com/api';
 
 const request = async (method, path, body, retry = true) => {
   const headers = { 'Content-Type': 'application/json' };
