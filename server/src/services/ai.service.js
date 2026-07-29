@@ -77,19 +77,21 @@ ${sleepRule}
 6. COMMON SENSE: Schedule normal human meals (Breakfast ~8 AM, Lunch ~1 PM, Dinner ~7 PM).
 7. If weekly context is provided, align today's tasks to weekly priorities.
 8. If previous day had skipped tasks, address why — don't repeat the same overloaded pattern.
-9. Output ONLY a valid JSON array of tasks matching the Universal Task Model format:
-[
-  { 
-    "time": "12:00 AM", 
-    "task": "string", 
-    "type": "focus|break|fixed|flexible",
-    "priority": "low|medium|high|critical",
-    "energyLevel": "LOW|MEDIUM|HIGH",
-    "focusLevel": "LIGHT|MEDIUM|DEEP",
-    "estimatedDuration": 60,
-    "moduleId": "personal"
-  }
-]
+9. Output ONLY a valid JSON object containing a "schedule" array of tasks matching the Universal Task Model format:
+{
+  "schedule": [
+    { 
+      "time": "12:00 AM", 
+      "task": "string", 
+      "type": "focus|break|fixed|flexible",
+      "priority": "low|medium|high|critical",
+      "energyLevel": "LOW|MEDIUM|HIGH",
+      "focusLevel": "LIGHT|MEDIUM|DEEP",
+      "estimatedDuration": 60,
+      "moduleId": "personal"
+    }
+  ]
+}
 No markdown wrapping, no explanation.`;
 
   let text = '';
@@ -100,6 +102,7 @@ No markdown wrapping, no explanation.`;
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
+        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: 'You are Geo AI, a scheduling assistant. Output only valid JSON.' },
           { role: 'user', content: systemPrompt }
@@ -140,12 +143,13 @@ No markdown wrapping, no explanation.`;
   text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
   try {
-    const startIdx = text.indexOf('[');
-    const endIdx = text.lastIndexOf(']');
+    const startIdx = text.indexOf('{');
+    const endIdx = text.lastIndexOf('}');
     if (startIdx !== -1 && endIdx !== -1) {
       text = text.substring(startIdx, endIdx + 1);
     }
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    return parsed.schedule || parsed;
   } catch (parseErr) {
     console.error('Failed to parse AI output:', text);
     const err = new Error('Geo AI returned invalid JSON format (Validation failed). Please try again.');
