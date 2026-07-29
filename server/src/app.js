@@ -18,7 +18,8 @@ app.use(helmet());
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
 const ALLOWED_ORIGINS = [
-  'capacitor://localhost',   // Android Capacitor app
+  'capacitor://localhost',   // Android Capacitor app (some versions)
+  'https://localhost',       // Android Capacitor app (newer versions)
   'http://localhost',        // iOS Capacitor app
   'http://localhost:5173',   // Vite dev server
   CLIENT_URL,                // Any extra origin from env (e.g. web domain)
