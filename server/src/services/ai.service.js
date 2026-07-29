@@ -102,7 +102,6 @@ No markdown wrapping, no explanation.`;
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: 'You are Geo AI, a scheduling assistant. Output only valid JSON.' },
           { role: 'user', content: systemPrompt }
@@ -148,6 +147,10 @@ No markdown wrapping, no explanation.`;
     if (startIdx !== -1 && endIdx !== -1) {
       text = text.substring(startIdx, endIdx + 1);
     }
+    
+    // Fix trailing commas which Llama 3 often generates and which break JSON.parse
+    text = text.replace(/,(\s*[\]}])/g, '$1');
+    
     const parsed = JSON.parse(text);
     return parsed.schedule || parsed;
   } catch (parseErr) {
