@@ -17,8 +17,22 @@ const app = express();
 app.use(helmet());
 
 // ─── CORS ──────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = [
+  'capacitor://localhost',   // Android Capacitor app
+  'http://localhost',        // iOS Capacitor app
+  'http://localhost:5173',   // Vite dev server
+  CLIENT_URL,                // Any extra origin from env (e.g. web domain)
+].filter(Boolean);
+
 app.use(cors({
-  origin: CLIENT_URL,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, Postman)
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS: origin '${origin}' not allowed`));
+    }
+  },
   credentials: true, // Allow cookies (refresh token)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -54,8 +68,8 @@ app.use(errorHandler);
 
 // ─── Start Server ──────────────────────────────────────────────────────────
 if (require.main === module) {
-  app.listen(PORT, () => {
-    logger.info(`🚀 Server running on http://localhost:${PORT} [${NODE_ENV}]`);
+  app.listen(PORT, '0.0.0.0', () => {
+    logger.info(`🚀 Server running on http://0.0.0.0:${PORT} [${NODE_ENV}]`);
     // Start auto-planner cron job (generates plans at 3:50 AM daily)
     try {
       require('./jobs/autoPlanner.job');
