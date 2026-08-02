@@ -102,7 +102,7 @@ const setDefaultPlan = async (userId, scheduleId, date) => {
       where: { userId, date },
       data: { isDefault: false }
     }),
-    prisma.schedule.update({
+    prisma.schedule.updateMany({
       where: { id: scheduleId, userId },
       data: { isDefault: true }
     })
