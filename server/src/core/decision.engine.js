@@ -25,8 +25,8 @@ class DecisionEngine {
     // 2. Fetch yesterday's schedule for context
     let previousDayContext = null;
     try {
-      const prevSchedule = await prisma.schedule.findUnique({
-        where: { userId_date: { userId, date: yesterdayStr } },
+      const prevSchedule = await prisma.schedule.findFirst({
+        where: { userId, date: yesterdayStr, isDefault: true },
         include: { tasks: { orderBy: { orderIndex: 'asc' } } }
       });
       if (prevSchedule?.tasks?.length > 0) {

@@ -182,4 +182,4 @@ const generateSchedule = async (userId, userPrompt, wakeTime, sleepTime) => {
   return slots;
 };
 
-module.exports = { getSchedule, getHistory, saveSchedule, generateSchedule };
+module.exports = { getSchedule, getHistory, saveSchedule, generateSchedule, getPlansForDate, setDefaultPlan };
