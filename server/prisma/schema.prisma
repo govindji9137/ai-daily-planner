@@ -127,6 +127,7 @@ model Schedule {
   // Adaptive learning context stored per day
   promptUsed String? // The original user prompt that generated this
   aiContext  String? // Summary of failures/notes for next day's AI
+  isDefault  Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -134,7 +135,7 @@ model Schedule {
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks Task[]
 
-  @@unique([userId, date])
+  @@index([userId, date])
   @@index([userId])
   @@map("schedules")
 }

@@ -32,4 +32,13 @@ router.post('/generate', [
   validate,
 ], ctrl.generateSchedule);
 
+// GET /api/schedule/plans?date=YYYY-MM-DD
+router.get('/plans', ctrl.getPlans);
+
+// PUT /api/schedule/plans/:id/default
+router.put('/plans/:id/default', [
+  body('date').isISO8601().withMessage('Date must be ISO 8601 format.'),
+  validate,
+], ctrl.setDefaultPlan);
+
 module.exports = router;

@@ -4,10 +4,78 @@
  * The modular dashboard assembler.
  * Assembles widgets injected by all enabled modules.
  */
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useModules } from '../../contexts/ModuleContext';
 import { usePlanner } from '../../contexts/PlannerContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiGetPlansForDate, apiSetDefaultPlan } from '../../utils/api';
+
+const PlanSelector = () => {
+  const [plans, setPlans] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { fetchSchedule } = usePlanner();
+
+  const loadPlans = async () => {
+    try {
+      setIsLoading(true);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const res = await apiGetPlansForDate(todayStr);
+      if (res.success && res.data) {
+        setPlans(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load plans', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlans();
+  }, []);
+
+  const handleSelect = async (e) => {
+    const scheduleId = e.target.value;
+    if (!scheduleId) return;
+    
+    try {
+      setIsLoading(true);
+      const todayStr = new Date().toISOString().split('T')[0];
+      await apiSetDefaultPlan(scheduleId, todayStr);
+      await fetchSchedule();
+      await loadPlans();
+    } catch (err) {
+      console.error('Failed to set default plan', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (plans.length <= 1) return null; // No variations to select from
+
+  return (
+    <select 
+      onChange={handleSelect}
+      disabled={isLoading}
+      value={plans.find(p => p.isDefault)?.id || ''}
+      style={{
+        padding: '8px 12px',
+        borderRadius: 'var(--radius-md)',
+        background: 'var(--bg-surface)',
+        border: '1px solid var(--glass-border)',
+        color: 'var(--text-primary)',
+        outline: 'none',
+        cursor: 'pointer'
+      }}
+    >
+      {plans.map((plan, index) => (
+        <option key={plan.id} value={plan.id}>
+          {plan.isDefault ? 'Active Plan' : `Alternative ${index + 1}`} ({new Date(plan.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})})
+        </option>
+      ))}
+    </select>
+  );
+};
 
 const Dashboard = () => {
   const { dashboardWidgets } = useModules();
@@ -63,6 +131,19 @@ const Dashboard = () => {
               <span style={{ fontSize: '20px' }}>🎉</span> All caught up for now!
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Plan Selection Section */}
+      <div className="glass-panel" style={{ padding: '20px', marginTop: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: '15px', marginBottom: '4px' }}>Daily Plan Variation</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '13px', margin: 0 }}>
+              Select a different plan generated for today if you prefer.
+            </p>
+          </div>
+          <PlanSelector />
         </div>
       </div>
 

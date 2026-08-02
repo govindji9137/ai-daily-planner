@@ -75,6 +75,8 @@ export const apiGetSchedule = (date) => request('GET', `/schedule${date ? `?date
 export const apiSaveSchedule = (slots, date, promptUsed) => request('PUT', '/schedule', { slots, date, promptUsed });
 export const apiGenerateSchedule = (prompt, wakeTime, sleepTime) => request('POST', '/schedule/generate', { prompt, wakeTime, sleepTime });
 export const apiGetHistory = () => request('GET', '/schedule/history');
+export const apiGetPlansForDate = (date) => request('GET', `/schedule/plans?date=${date}`);
+export const apiSetDefaultPlan = (id, date) => request('PUT', `/schedule/plans/${id}/default`, { date });
 
 // ─── Chat Endpoints ───────────────────────────────────────────────────────
 export const apiChat = (message, history) => request('POST', '/chat', { message, history });

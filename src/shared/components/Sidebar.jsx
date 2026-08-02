@@ -48,47 +48,37 @@ const Sidebar = ({ activeView, setActiveView }) => {
 
   return (
     <>
-      {isCollapsed && (
-        <button 
-          onClick={() => setIsCollapsed(false)}
-          className="glass-button ghost"
-          style={{ 
-            position: 'fixed', 
-            top: '20px', 
-            left: '20px', 
-            zIndex: 9999, 
-            padding: '8px', 
-            minWidth: '42px', 
-            height: '42px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            borderRadius: '50%',
-            background: 'var(--bg-surface)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid var(--glass-border)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-          }}
-          title="Expand Sidebar"
-        >
-          ☰
-        </button>
-      )}
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="glass-button ghost"
+        style={{ 
+          position: 'fixed', 
+          top: '20px', 
+          left: '20px', 
+          zIndex: 9999, 
+          padding: '8px', 
+          minWidth: '42px', 
+          height: '42px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          borderRadius: '50%',
+          background: 'var(--bg-surface)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid var(--glass-border)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+        }}
+        title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+      >
+        {isCollapsed ? '☰' : '✖'}
+      </button>
 
       <div className={`glass-panel sidebar ${isCollapsed ? 'collapsed' : ''}`}>
         {/* Logo & Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '32px' }}>
-          <div className="sidebar-logo" style={{ marginBottom: 0 }}>
+          <div className="sidebar-logo" style={{ marginBottom: 0, marginLeft: '48px' }}>
             <span style={{ color: 'var(--accent-primary)' }}>Geo</span>Planer
           </div>
-          <button 
-            onClick={() => setIsCollapsed(true)}
-            className="glass-button ghost"
-            style={{ padding: '6px', minWidth: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}
-            title="Collapse Sidebar"
-          >
-            ◀
-          </button>
         </div>
 
       {/* Today's progress pill */}

@@ -45,4 +45,28 @@ const generateSchedule = async (req, res, next) => {
   }
 };
 
-module.exports = { getSchedule, getHistory, saveSchedule, generateSchedule };
+// GET /api/schedule/plans?date=2026-07-17
+const getPlans = async (req, res, next) => {
+  try {
+    const date = req.query.date;
+    if (!date) return res.status(400).json({ success: false, message: 'Date is required' });
+    const records = await scheduleService.getPlansForDate(req.user.id, date);
+    res.json({ success: true, data: records });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /api/schedule/plans/:id/default
+const setDefaultPlan = async (req, res, next) => {
+  try {
+    const { date } = req.body;
+    if (!date) return res.status(400).json({ success: false, message: 'Date is required' });
+    const record = await scheduleService.setDefaultPlan(req.user.id, req.params.id, date);
+    res.json({ success: true, data: record });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getSchedule, getHistory, saveSchedule, generateSchedule, getPlans, setDefaultPlan };
