@@ -113,27 +113,31 @@ const setDefaultPlan = async (userId, scheduleId, date) => {
 };
 
 /**
- * Create a new schedule variation and set it as the default.
+ * Update the current default schedule (used for ticking off tasks or saving edits).
  */
 const saveSchedule = async (userId, slots, date = today(), promptUsed = null) => {
   const scheduleId = await prisma.$transaction(async (tx) => {
-    // 1. Set all existing schedules for this date to non-default
-    await tx.schedule.updateMany({
-      where: { userId, date },
-      data: { isDefault: false }
+    let schedule = await tx.schedule.findFirst({
+      where: { userId, date, isDefault: true }
     });
 
-    // 2. Create the new schedule as default
-    const schedule = await tx.schedule.create({
-      data: {
-        userId,
-        date,
-        promptUsed,
-        isDefault: true
-      }
-    });
+    if (!schedule) {
+      await tx.schedule.updateMany({
+        where: { userId, date },
+        data: { isDefault: false }
+      });
+      schedule = await tx.schedule.create({
+        data: { userId, date, promptUsed, isDefault: true }
+      });
+    } else if (promptUsed) {
+      schedule = await tx.schedule.update({
+        where: { id: schedule.id },
+        data: { promptUsed }
+      });
+    }
 
-    // 3. Create new tasks from slots
+    await tx.task.deleteMany({ where: { scheduleId: schedule.id } });
+
     if (slots && slots.length > 0) {
       await tx.task.createMany({
         data: slots.map((s, index) => ({
@@ -157,9 +161,52 @@ const saveSchedule = async (userId, slots, date = today(), promptUsed = null) =>
       });
     }
 
-    // Log to history within transaction
     await HistoryEngine.logEvent(userId, 'SCHEDULE_SAVED', schedule.id, 'Schedule', { date, slotCount: slots?.length || 0 }, tx);
     
+    return schedule.id;
+  });
+
+  return getSchedule(userId, date);
+};
+
+/**
+ * Create a brand new schedule variation and set it as the default (used by AI generation).
+ */
+const createScheduleVariation = async (userId, slots, date = today(), promptUsed = null) => {
+  const scheduleId = await prisma.$transaction(async (tx) => {
+    await tx.schedule.updateMany({
+      where: { userId, date },
+      data: { isDefault: false }
+    });
+
+    const schedule = await tx.schedule.create({
+      data: { userId, date, promptUsed, isDefault: true }
+    });
+
+    if (slots && slots.length > 0) {
+      await tx.task.createMany({
+        data: slots.map((s, index) => ({
+          userId,
+          scheduleId: schedule.id,
+          title: s.task,
+          type: s.type || 'fixed',
+          priority: s.priority || 'medium',
+          moduleId: s.moduleId || 'personal',
+          startTime: s.time,
+          orderIndex: index,
+          date: date,
+          status: s.status || 'SCHEDULED',
+          estimatedDuration: s.estimatedDuration || 60,
+          actualDuration: s.actualDuration || 0,
+          energyLevel: s.energyLevel || 'MEDIUM',
+          focusLevel: s.focusLevel || 'MEDIUM',
+          incompleteReason: s.incompleteReason || null,
+          notes: s.notes || null
+        }))
+      });
+    }
+
+    await HistoryEngine.logEvent(userId, 'SCHEDULE_GENERATED_VARIATION', schedule.id, 'Schedule', { date, slotCount: slots?.length || 0 }, tx);
     return schedule.id;
   });
 
@@ -170,16 +217,10 @@ const saveSchedule = async (userId, slots, date = today(), promptUsed = null) =>
  * Generate a 24-hour schedule via the Decision Engine.
  */
 const generateSchedule = async (userId, userPrompt, wakeTime, sleepTime) => {
-  // 1. Delegate strictly to the Decision Engine (SRS Part 2)
   const slots = await DecisionEngine.buildDailyPlan(userId, userPrompt, today(), wakeTime, sleepTime);
-
-  // 2. Persist the generated schedule via the new relational setup
-  await saveSchedule(userId, slots, today(), userPrompt);
-
-  // 3. Log plan generation to history
+  await createScheduleVariation(userId, slots, today(), userPrompt);
   await HistoryEngine.logEvent(userId, 'PLANNER_GENERATED', null, 'Schedule', { date: today(), prompt: userPrompt, slotCount: slots.length });
-
   return slots;
 };
 
-module.exports = { getSchedule, getHistory, saveSchedule, generateSchedule, getPlansForDate, setDefaultPlan };
+module.exports = { getSchedule, getHistory, saveSchedule, createScheduleVariation, generateSchedule, getPlansForDate, setDefaultPlan };

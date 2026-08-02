@@ -48,7 +48,7 @@ const runAutoPlanner = async () => {
         const slots = await DecisionEngine.buildDailyPlan(user.id, autoPrompt, date, wakeTime, sleepTime);
         
         // This will save the plan and set it as the new default for the day
-        await scheduleService.saveSchedule(user.id, slots, date, autoPrompt);
+        await scheduleService.createScheduleVariation(user.id, slots, date, autoPrompt);
         
         await HistoryEngine.logEvent(user.id, 'AUTO_PLAN_GENERATED', null, 'Schedule', { date, triggeredBy: 'cron_4:00am' });
         logger.info(`[AutoPlanner] ✅ Generated plan for user ${user.id} (${user.name})`);
