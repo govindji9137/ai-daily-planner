@@ -15,7 +15,12 @@ const request = async (method, path, body, retry = true) => {
   const headers = { 'Content-Type': 'application/json' };
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
-  const res = await fetch(`${BASE}${path}`, {
+  const url = new URL(`${BASE}${path}`);
+  if (method === 'GET') {
+    url.searchParams.append('_t', Date.now());
+  }
+
+  const res = await fetch(url.toString(), {
     method,
     headers,
     credentials: 'include', // Send httpOnly refresh token cookie
